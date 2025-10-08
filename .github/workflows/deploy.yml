@@ -124,15 +124,19 @@ jobs:
         echo "Found instance: $INSTANCE_ID"
 
     - name: Deploy to EC2
+      id: deploy
       run: |
         echo "🚀 Starting deployment to EC2..."
-        aws ssm send-command \
+        COMMAND_ID=$(aws ssm send-command \
           --instance-ids ${{ steps.ec2-info.outputs.instance-id }} \
           --document-name "AWS-RunShellScript" \
           --parameters 'commands=["/home/ec2-user/deploy.sh main-${{ github.sha }}"]' \
-          --wait-for-completion \
           --query 'Command.CommandId' \
-          --output text
+          --output text)
+        echo "command-id=$COMMAND_ID" >> $GITHUB_OUTPUT
+        aws ssm wait command-executed \
+          --command-id "$COMMAND_ID" \
+          --instance-id ${{ steps.ec2-info.outputs.instance-id }}
 
     - name: Verify deployment
       run: |
