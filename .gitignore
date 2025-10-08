@@ -1,0 +1,20 @@
+# Node modules
+app/node_modules/
+
+# AWS CLI installer archive
+awscliv2.zip
+
+# Terraform local state
+terraform/.terraform/
+terraform/.terraform.lock.hcl
+terraform/terraform.tfstate
+terraform/terraform.tfstate.backup
+
+# npm logs
+npm-debug.log*
+
+# macOS
+.DS_Store
+
+# AWS bundled installer
+aws/

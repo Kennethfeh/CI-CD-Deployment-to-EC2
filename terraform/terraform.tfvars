@@ -1,0 +1,8 @@
+aws_region            = "us-east-1"
+project_name          = "devops-project-1"
+environment           = "dev"
+vpc_cidr             = "10.0.0.0/16"
+public_subnet_cidr   = "10.0.1.0/24"
+instance_type        = "t3.micro"
+ecr_repository_name  = "devops-project-1-app"
+public_key           = "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQCo/yDS2jMtG3FlV7zSL3f84fRPoGC0mpjVEMSOXS9lr8JsDcACoN7pe7GXGPfsw0A9m0Jo48/DpoOjf6qwCBzPCkg5edI458zWZ+GrnYspBDswE5TdiYjhKhYtktyo18UWC6wgAGQT1VHj0TwjMtBh42DXKoHvGb4LH5qrFx7dPRhHHTc0SsugCKsG7CWAfrRwXIrhirNbbRKbUx5/wrk+XdXmUUPOkvx4E+CYLDh+XfjxRAeyptTuKISixxme4O2Wh4FI3msdhsrBF78eApRvh/tCsjN/WSCJt1xsMsNWiESo9qoxrnVXww7fOFRV9tx7Cj7iiIbBdFYuqi4juDNTyOAUb43T0gRBOijZ3QeYDc69Dnzg/qDdMoGTyMCHaOQ7pYXHE7mRw/WYZIjaDFqg6qJAh3+/wghSRpJROunY9wT6qUbeProKWVQjSbl/sD2eT4SLR8ee8P8ao7k7Iw6Pu2f2xbnwqzKgZODqa3HfPDY5u4ub1jRJvOj1HQKI1w1fVF9vrW9x7AM2FqA9eJRjgQPySI/feg50NVW2sHUrgrkrAn6Xn2P2dLRb5a6KNucNBDCtEwD8hH4wui90Zddu71AqLeFWioOJuq9EvmjKjI0eeUXdsP6QrbmIRYJAj2uzBfOjOIv4hWUmPKvPnfL/FVDylY+goWNiQwfZaOM5Cw== gamemaker@Devopss-MacBook-Pro.local"

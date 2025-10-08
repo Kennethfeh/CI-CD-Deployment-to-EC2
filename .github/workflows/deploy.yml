@@ -1,0 +1,157 @@
+name: Deploy to EC2
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+env:
+  AWS_REGION: us-east-1
+  ECR_REPOSITORY: devops-project-1-app
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    name: Test Application
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+        cache-dependency-path: app/package-lock.json
+
+    - name: Install dependencies
+      working-directory: ./app
+      run: npm ci
+
+    - name: Run tests
+      working-directory: ./app
+      run: npm test
+
+    - name: Lint Dockerfile
+      uses: hadolint/hadolint-action@v3.1.0
+      with:
+        dockerfile: app/Dockerfile
+
+  build:
+    needs: test
+    runs-on: ubuntu-latest
+    name: Build and Push Docker Image
+    if: github.ref == 'refs/heads/main'
+    
+    outputs:
+      image-tag: ${{ steps.meta.outputs.tags }}
+      image-digest: ${{ steps.build.outputs.digest }}
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/GitHubActionsRole
+        aws-region: ${{ env.AWS_REGION }}
+
+    - name: Login to Amazon ECR
+      id: login-ecr
+      uses: aws-actions/amazon-ecr-login@v2
+
+    - name: Extract metadata
+      id: meta
+      uses: docker/metadata-action@v5
+      with:
+        images: ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}
+        tags: |
+          type=ref,event=branch
+          type=sha,prefix={{branch}}-
+          type=raw,value=latest,enable={{is_default_branch}}
+
+    - name: Build and push Docker image
+      id: build
+      uses: docker/build-push-action@v5
+      with:
+        context: ./app
+        push: true
+        tags: ${{ steps.meta.outputs.tags }}
+        labels: ${{ steps.meta.outputs.labels }}
+
+    - name: Scan image for vulnerabilities
+      uses: aquasecurity/trivy-action@master
+      with:
+        image-ref: ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:latest
+        format: 'table'
+        exit-code: '0'
+        ignore-unfixed: true
+        vuln-type: 'os,library'
+        severity: 'CRITICAL,HIGH'
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    name: Deploy to EC2
+    environment: production
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/GitHubActionsRole
+        aws-region: ${{ env.AWS_REGION }}
+
+    - name: Get EC2 instance info
+      id: ec2-info
+      run: |
+        INSTANCE_ID=$(aws ec2 describe-instances \
+          --filters "Name=tag:Name,Values=devops-project-1-app-server" \
+                   "Name=instance-state-name,Values=running" \
+          --query 'Reservations[0].Instances[0].InstanceId' \
+          --output text)
+        echo "instance-id=$INSTANCE_ID" >> $GITHUB_OUTPUT
+        echo "Found instance: $INSTANCE_ID"
+
+    - name: Deploy to EC2
+      run: |
+        echo "🚀 Starting deployment to EC2..."
+        aws ssm send-command \
+          --instance-ids ${{ steps.ec2-info.outputs.instance-id }} \
+          --document-name "AWS-RunShellScript" \
+          --parameters 'commands=["/home/ec2-user/deploy.sh main-${{ github.sha }}"]' \
+          --wait-for-completion \
+          --query 'Command.CommandId' \
+          --output text
+
+    - name: Verify deployment
+      run: |
+        echo "⏳ Waiting for application to start..."
+        sleep 30
+        
+        PUBLIC_IP=$(aws ec2 describe-instances \
+          --instance-ids ${{ steps.ec2-info.outputs.instance-id }} \
+          --query 'Reservations[0].Instances[0].PublicIpAddress' \
+          --output text)
+        
+        echo "Testing application at http://$PUBLIC_IP:3000"
+        
+        # Test health endpoint
+        curl -f http://$PUBLIC_IP:3000/health || exit 1
+        
+        # Test main endpoint
+        curl -f http://$PUBLIC_IP:3000 || exit 1
+        
+        echo "✅ Deployment successful! App available at http://$PUBLIC_IP:3000"
+
+
