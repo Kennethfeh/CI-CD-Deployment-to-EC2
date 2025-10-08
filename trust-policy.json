@@ -12,7 +12,7 @@
           "token.actions.githubusercontent.com:aud": "sts.amazonaws.com"
         },
         "StringLike": {
-          "token.actions.githubusercontent.com:sub": "repo:kennethfeh/CI-CD-Deployment-to-EC2:*"
+          "token.actions.githubusercontent.com:sub": "repo:Kennethfeh/CI-CD-Deployment-to-EC2:*"
         }
       }
     }
